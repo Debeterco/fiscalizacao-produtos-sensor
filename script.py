@@ -2,6 +2,27 @@ import streamlit as st
 import random
 import time
 
+# --- Login simples (para você entender a ideia) ---
+USUARIO_CORRETO = "admin"
+SENHA_CORRETA = "1234"
+
+def login():
+    st.title("🔐 Login")
+    usuario = st.text_input("Usuário")
+    senha = st.text_input("Senha", type="password")
+    if st.button("Entrar"):
+        if usuario == USUARIO_CORRETO and senha == SENHA_CORRETA:
+            st.session_state['login'] = True
+            st.experimental_rerun()
+        else:
+            st.error("Usuário ou senha incorretos")
+
+def logout():
+    st.session_state['login'] = False
+    st.experimental_rerun()
+
+# --- Simulação fiscalizacao ---
+
 class Produto:
     def __init__(self, nome):
         self.nome = nome
@@ -58,7 +79,8 @@ def simular_fiscalizacao(produtos):
     st.write(f"**Furtos detectados pelo sensor:** {furtos_detectados}")
     st.write(f"**Furtos ocultos (sensor desligado):** {furtos_ocultos}")
 
-# Lista de produtos para simular
+# --- App principal ---
+
 nomes_produtos = [
     "Camisa Polo",
     "Calça Jeans",
@@ -68,8 +90,21 @@ nomes_produtos = [
     "Mochila"
 ]
 
-if st.button("Iniciar Simulação de Fiscalização"):
-    produtos_loja = [Produto(nome) for nome in nomes_produtos]
-    simular_fiscalizacao(produtos_loja)
-else:
-    st.write("Clique no botão acima para iniciar a fiscalização.")
+def main():
+    if 'login' not in st.session_state:
+        st.session_state['login'] = False
+
+    if not st.session_state['login']:
+        login()
+    else:
+        st.sidebar.button("Sair", on_click=logout)
+        st.title("Simulador Fiscalização de Produto")
+        if st.button("Iniciar Simulação de Fiscalização"):
+            produtos_loja = [Produto(nome) for nome in nomes_produtos]
+            with st.spinner("Fiscalizando produtos..."):
+                simular_fiscalizacao(produtos_loja)
+        else:
+            st.write("Clique no botão acima para iniciar a fiscalização.")
+
+if __name__ == "__main__":
+    main()
