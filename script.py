@@ -1,31 +1,44 @@
 import streamlit as st
+import sqlite3
+import hashlib
 import random
 import time
 
-# --- Login simples (para você entender a ideia) ---
-USUARIO_CORRETO = "admin"
-SENHA_CORRETA = "1234"
+# --- Banco de dados SQLite ---
 
-def login():
-    st.title("🔐 Login")
-    usuario = st.text_input("Usuário", key="usuario")
-    senha = st.text_input("Senha", type="password", key="senha")
-    if st.button("Entrar"):
-        if usuario == USUARIO_CORRETO and senha == SENHA_CORRETA:
-            st.session_state['login'] = True
-            st.session_state['login_feito'] = True  # flag para rerun
-        else:
-            st.error("Usuário ou senha incorretos")
+conn = sqlite3.connect("usuarios.db", check_same_thread=False)
+c = conn.cursor()
 
-    if st.session_state.get('login_feito', False):
-        st.session_state['login_feito'] = False
-        st.experimental_rerun()
-        
-def logout():
-    st.session_state['login'] = False
-    st.experimental_rerun()
+def criar_tabela():
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            username TEXT PRIMARY KEY,
+            password TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
 
-# --- Simulação fiscalizacao ---
+def adicionar_usuario(username, password):
+    try:
+        c.execute('INSERT INTO usuarios (username, password) VALUES (?, ?)', (username, password))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+
+def verificar_usuario(username, password):
+    c.execute('SELECT password FROM usuarios WHERE username = ?', (username,))
+    resultado = c.fetchone()
+    if resultado:
+        senha_hash = resultado[0]
+        return senha_hash == password
+    return False
+
+# --- Função para hashear senha ---
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# --- Classe Produto e simulação ---
 
 class Produto:
     def __init__(self, nome):
@@ -83,6 +96,48 @@ def simular_fiscalizacao(produtos):
     st.write(f"**Furtos detectados pelo sensor:** {furtos_detectados}")
     st.write(f"**Furtos ocultos (sensor desligado):** {furtos_ocultos}")
 
+# --- Tela de cadastro ---
+
+def cadastro():
+    st.title("📋 Cadastro")
+    username = st.text_input("Usuário")
+    password = st.text_input("Senha", type="password")
+    password_conf = st.text_input("Confirme a senha", type="password")
+    if st.button("Cadastrar"):
+        if password != password_conf:
+            st.error("As senhas não coincidem.")
+        elif len(username) < 3:
+            st.error("Usuário deve ter ao menos 3 caracteres.")
+        elif len(password) < 6:
+            st.error("Senha deve ter ao menos 6 caracteres.")
+        else:
+            senha_hash = hash_password(password)
+            sucesso = adicionar_usuario(username, senha_hash)
+            if sucesso:
+                st.success("Usuário cadastrado com sucesso! Faça login.")
+            else:
+                st.error("Usuário já existe.")
+
+# --- Tela de login ---
+
+def login():
+    st.title("🔐 Login")
+    username = st.text_input("Usuário")
+    password = st.text_input("Senha", type="password")
+    if st.button("Entrar"):
+        senha_hash = hash_password(password)
+        if verificar_usuario(username, senha_hash):
+            st.session_state['login'] = True
+            st.session_state['usuario'] = username
+            st.experimental_rerun()
+        else:
+            st.error("Usuário ou senha incorretos")
+
+def logout():
+    st.session_state['login'] = False
+    st.session_state['usuario'] = None
+    st.experimental_rerun()
+
 # --- App principal ---
 
 nomes_produtos = [
@@ -95,13 +150,22 @@ nomes_produtos = [
 ]
 
 def main():
+    criar_tabela()
     if 'login' not in st.session_state:
         st.session_state['login'] = False
-
+        st.session_state['usuario'] = None
+    menu = ["Login", "Cadastro"]
     if not st.session_state['login']:
-        login()
+        choice = st.sidebar.selectbox("Menu", menu)
+        if choice == "Login":
+            login()
+        elif choice == "Cadastro":
+            cadastro()
     else:
-        st.sidebar.button("Sair", on_click=logout)
+        st.sidebar.write(f"👤 Usuário: {st.session_state['usuario']}")
+        if st.sidebar.button("Sair"):
+            logout()
+
         st.title("Simulador Fiscalização de Produto")
         if st.button("Iniciar Simulação de Fiscalização"):
             produtos_loja = [Produto(nome) for nome in nomes_produtos]
