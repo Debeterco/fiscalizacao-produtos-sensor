@@ -8,15 +8,19 @@ SENHA_CORRETA = "1234"
 
 def login():
     st.title("🔐 Login")
-    usuario = st.text_input("Usuário")
-    senha = st.text_input("Senha", type="password")
+    usuario = st.text_input("Usuário", key="usuario")
+    senha = st.text_input("Senha", type="password", key="senha")
     if st.button("Entrar"):
         if usuario == USUARIO_CORRETO and senha == SENHA_CORRETA:
             st.session_state['login'] = True
-            st.experimental_rerun()
+            st.session_state['login_feito'] = True  # flag para rerun
         else:
             st.error("Usuário ou senha incorretos")
 
+    if st.session_state.get('login_feito', False):
+        st.session_state['login_feito'] = False
+        st.experimental_rerun()
+        
 def logout():
     st.session_state['login'] = False
     st.experimental_rerun()
