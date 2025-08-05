@@ -3,7 +3,7 @@ import random
 import time
 import pandas as pd
 
-st.set_page_config(page_title="Simulação Antifurto", layout="centered")
+st.set_page_config(page_title="Simulador Antifurto", layout="centered")
 
 # Emoji por produto
 icones = {
@@ -28,42 +28,21 @@ if "historico" not in st.session_state:
 class Produto:
     def __init__(self, nome):
         self.nome = nome
-        self.sensor_ativo = random.choice([True, False])
         self.pago = random.choice([True, False])
         self.furtado = False
 
     def verificar_sensor(self):
+        falha_sensor = random.random() < 0.05  # 5% de chance de falha
+
         if not self.pago:
-            if self.sensor_ativo:
+            if not falha_sensor:
                 self.furtado = True
                 return f"🔴 ALARME! Produto '{self.nome}' NÃO está pago! Sensor APITOU! FURTO DETECTADO!"
             else:
-                # Sensor não pode detectar, mas o produto foi furtado
                 self.furtado = True
-                return f"🔕 Produto '{self.nome}' NÃO está pago, mas o sensor está DESLIGADO. Sensor NÃO DETECTOU!"
+                return f"🔕 Produto '{self.nome}' NÃO está pago, mas o sensor FALHOU. FURTO NÃO DETECTADO!"
         else:
-            if self.sensor_ativo:
-                return f"🟢 Produto '{self.nome}' está pago e com sensor ativo. OK."
-            else:
-                return f"🟠 Produto '{self.nome}' está pago, mas o sensor está DESATIVADO. Atenção!"
-
-    def tentar_furto(self):
-        if self.pago:
-            return False
-        if not self.sensor_ativo:
-            chance = chance_furto_por_tipo(self.nome)
-            if random.random() < chance:
-                self.furtado = True
-                return True
-        return False
-
-def chance_furto_por_tipo(nome):
-    nome = nome.lower()
-    if "mochila" in nome:
-        return 0.5
-    elif "camisa" in nome:
-        return 0.1
-    return 0.3
+            return f"🟢 Produto '{self.nome}' está pago. OK."
 
 def simular_fiscalizacao(produtos):
     st.write("### Iniciando fiscalização dos produtos...\n")
@@ -79,21 +58,20 @@ def simular_fiscalizacao(produtos):
         resultado = produto.verificar_sensor()
         st.write(resultado)
 
-        furtou = produto.tentar_furto()
-        if furtou:
-            st.error(f"🚨 FURTO OCULTO! '{produto.nome}' passou SEM PAGAMENTO e SEM SENSOR!")
-            furtos_ocultos += 1
+        if not produto.pago:
+            if produto.furtado:
+                if "FALHOU" in resultado:
+                    furtos_ocultos += 1
+                    st.error(f"🚨 FURTO OCULTO! '{produto.nome}' passou sem ser detectado.")
+                else:
+                    furtos_detectados += 1
+                    st.warning("⚠️ Produto não pago DETECTADO como furto.")
         else:
-            if not produto.pago:
-                furtos_detectados += 1
-                st.warning("⚠️ Produto não pago detectado como furto.")
-            else:
-                st.success("✅ Produto ok, sem problemas.")
+            st.success("✅ Produto OK, sem problemas.")
 
         dados.append({
             "Produto": produto.nome,
             "Pago": "Sim" if produto.pago else "Não",
-            "Sensor Ativo": "Sim" if produto.sensor_ativo else "Não",
             "Furtado": "Sim" if produto.furtado else "Não"
         })
 
@@ -101,7 +79,8 @@ def simular_fiscalizacao(produtos):
         progress_bar.progress((i + 1) / len(produtos))
 
     st.write("## ✅ Fiscalização concluída!")
-    st.write(f"**Furtos detectados (com sensor):** `{furtos_detectados}`")
+    st.write(f"**Furtos detectados (sensor funcionou):** `{furtos_detectados}`")
+    st.write(f"**Furtos ocultos (sensor falhou):** `{furtos_ocultos}`")
 
     df_resultado = pd.DataFrame(dados)
     st.dataframe(df_resultado)
@@ -115,7 +94,7 @@ def simular_fiscalizacao(produtos):
     return df_resultado
 
 # Interface
-st.title("🛒 Simulador de Fiscalização Antifurto")
+st.title("🛒 Simulador de Fiscalização Antifurto (com falha de sensor)")
 
 num_produtos = st.slider("Quantidade de produtos a simular:", 1, 10, 6)
 nomes = [st.text_input(f"Nome do produto {i+1}", f"Produto {i+1}") for i in range(num_produtos)]
