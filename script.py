@@ -47,6 +47,7 @@ class Produto:
 def simular_fiscalizacao(produtos):
     st.write("### Iniciando fiscalização dos produtos...\n")
     furtos_detectados = 0
+    furtos_ocultos = 0
     dados = []
     progress_bar = st.progress(0)
 
@@ -61,7 +62,7 @@ def simular_fiscalizacao(produtos):
             if produto.furtado:
                 if "FALHOU" in resultado:
                     furtos_ocultos += 1
-                    st.error(f"Falha! '{produto.nome}' passou sem ser detectado.")
+                    st.error(f"🚨 FURTO OCULTO! '{produto.nome}' passou sem ser detectado.")
                 else:
                     furtos_detectados += 1
                     st.warning("⚠️ Produto não pago DETECTADO como furto.")
@@ -79,6 +80,7 @@ def simular_fiscalizacao(produtos):
 
     st.write("## ✅ Fiscalização concluída!")
     st.write(f"**Furtos detectados (sensor funcionou):** `{furtos_detectados}`")
+    st.write(f"**Furtos ocultos (sensor falhou):** `{furtos_ocultos}`")
 
     df_resultado = pd.DataFrame(dados)
     st.dataframe(df_resultado)
@@ -86,6 +88,7 @@ def simular_fiscalizacao(produtos):
     st.session_state.historico.append({
         "Total Produtos": len(produtos),
         "Detectados": furtos_detectados,
+        "Ocultos": furtos_ocultos
     })
 
     return df_resultado
