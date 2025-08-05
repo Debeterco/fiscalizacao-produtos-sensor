@@ -33,17 +33,19 @@ class Produto:
         self.furtado = False
 
     def verificar_sensor(self):
-        falha_sensor = random.random() < 0.05  # 5% de falha
         if not self.pago:
-            if self.sensor_ativo and not falha_sensor:
-                return f"🔴 ALARME! Produto '{self.nome}' NÃO está pago! Sensor APITOU!"
-            else:
+            if self.sensor_ativo:
                 self.furtado = True
-                return f"⚠️ Sensor FALHOU! FURTO OCULTO: '{self.nome}' passou despercebido!"
-        elif self.sensor_ativo:
-            return f"🟢 Produto '{self.nome}' está pago e com sensor ativo. OK."
+                return f"🔴 ALARME! Produto '{self.nome}' NÃO está pago! Sensor APITOU! FURTO DETECTADO!"
+            else:
+                # Sensor não pode detectar, mas o produto foi furtado
+                self.furtado = True
+                return f"🔕 Produto '{self.nome}' NÃO está pago, mas o sensor está DESLIGADO. Sensor NÃO DETECTOU!"
         else:
-            return f"🟠 Produto '{self.nome}' está pago, mas o sensor está DESATIVADO."
+            if self.sensor_ativo:
+                return f"🟢 Produto '{self.nome}' está pago e com sensor ativo. OK."
+            else:
+                return f"🟠 Produto '{self.nome}' está pago, mas o sensor está DESATIVADO. Atenção!"
 
     def tentar_furto(self):
         if self.pago:
